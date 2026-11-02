@@ -51,7 +51,7 @@ jobs:
             exit 1
           fi
           echo "Partes: $PARTS"
-          cat $PARTS > game.zip
+          printf '%s\n' "$PARTS" | while IFS= read -r f; do cat "$f"; done > game.zip
           mkdir gamezip
           unzip -q game.zip -d gamezip
           APK=$(find gamezip -iname '*.apk' | head -1)
