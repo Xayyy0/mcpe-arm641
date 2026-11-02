@@ -40,6 +40,64 @@ jobs:
           git clone https://github.com/yxrxtskxy/mcpe-arm64 proj
           git -C proj checkout 0c807a391f8e86e5268eb3026628426a34992ca5
 
+      - name: Pedir permiso de todos los archivos al abrir la app
+        run: |
+          set -eux
+          cat > "$GITHUB_WORKSPACE/patch_storage.py" <<'PYEOF'
+          import sys
+          path = sys.argv[1]
+          s = open(path, encoding="utf-8").read()
+          old = """    protected void onCreate(Bundle state) {
+                  super.onCreate(state);
+                  try {"""
+          new = """    protected void onCreate(Bundle state) {
+                  super.onCreate(state);
+                  if (android.os.Build.VERSION.SDK_INT >= 30 && !android.os.Environment.isExternalStorageManager()) {
+                      try {
+                          startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                                  android.net.Uri.fromParts("package", getPackageName(), null)));
+                          askedStorage = true;
+                          android.widget.Toast.makeText(this,
+                                  "Activa \\"Permitir administrar todos los archivos\\" y vuelve atras",
+                                  android.widget.Toast.LENGTH_LONG).show();
+                          return;
+                      } catch (Exception e) {
+                          Log.w(TAG, "cannot open the all files access page", e);
+                      }
+                  }
+                  begin();
+              }
+
+              private boolean askedStorage;
+              private boolean leftForSettings;
+
+              @Override
+              protected void onPause() {
+                  super.onPause();
+                  if (askedStorage) leftForSettings = true;
+              }
+
+              @Override
+              protected void onResume() {
+                  super.onResume();
+                  if (leftForSettings) {
+                      leftForSettings = false;
+                      askedStorage = false;
+                      begin();
+                  }
+              }
+
+              private void begin() {
+                  try {"""
+          assert s.count(old) == 1, "onCreate not found exactly once"
+          assert "askedStorage" not in s
+          s = s.replace(old, new)
+          open(path, "w", encoding="utf-8").write(s)
+          print("patched", path)
+          PYEOF
+          python3 "$GITHUB_WORKSPACE/patch_storage.py" "$GITHUB_WORKSPACE/proj/android/app/src/main/java/com/zettabridge/launcher/GameLauncherActivity.java"
+          grep -n "isExternalStorageManager" "$GITHUB_WORKSPACE/proj/android/app/src/main/java/com/zettabridge/launcher/GameLauncherActivity.java"
+
       - name: Juntar y extraer el APK del juego
         run: |
           set -eux
