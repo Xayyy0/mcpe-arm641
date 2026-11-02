@@ -66,6 +66,8 @@ jobs:
       - name: Herramientas de Android (SDK y NDK r29)
         run: |
           set -eux
+          export ANDROID_SDK_ROOT="$HOME/android-sdk"
+          export ANDROID_HOME="$HOME/android-sdk"
           sh proj/tools/setup_toolchain.sh
           yes | "$HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$HOME/android-sdk" --licenses > /dev/null || true
 
