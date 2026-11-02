@@ -76,6 +76,23 @@ jobs:
           sh tools/extract_sysroot.sh
           rm -rf .cache/gsi
 
+      - name: Comprobar compiladores del NDK
+        run: |
+          set -eux
+          NDKDIR="$HOME/android-sdk/ndk/29.0.14206865"
+          TC="$NDKDIR/toolchains/llvm/prebuilt/linux-x86_64"
+          ls "$NDKDIR" | head -30
+          ls "$TC/bin" | grep -E 'armv7a|^clang' | head -40 || true
+          file "$TC/bin/clang" || true
+          ldd "$(readlink -f "$TC/bin/clang")" | head -20 || true
+          if ! "$TC/bin/armv7a-linux-androideabi21-clang" --version > /dev/null 2>&1; then
+            echo "El compilador armv7a no funciona; creo los envoltorios a mano"
+            printf '#!/bin/sh\nexec "$(dirname "$0")/clang" --target=armv7a-linux-androideabi21 "$@"\n' > "$TC/bin/armv7a-linux-androideabi21-clang"
+            printf '#!/bin/sh\nexec "$(dirname "$0")/clang++" --target=armv7a-linux-androideabi21 "$@"\n' > "$TC/bin/armv7a-linux-androideabi21-clang++"
+            chmod +x "$TC/bin/armv7a-linux-androideabi21-clang" "$TC/bin/armv7a-linux-androideabi21-clang++"
+          fi
+          "$TC/bin/armv7a-linux-androideabi21-clang" --version
+
       - name: Compilar
         run: |
           set -eux
