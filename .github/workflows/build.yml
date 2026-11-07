@@ -98,7 +98,7 @@ jobs:
           python3 "$GITHUB_WORKSPACE/patch_storage.py" "$GITHUB_WORKSPACE/proj/android/app/src/main/java/com/zettabridge/launcher/GameLauncherActivity.java"
           grep -n "isExternalStorageManager" "$GITHUB_WORKSPACE/proj/android/app/src/main/java/com/zettabridge/launcher/GameLauncherActivity.java"
 
-      - name: Juntar y extraer el APK del juego
+      - name: Juntar y extraer el APK del juego (usa la libminecraftpe.so de tu propio zip)
         run: |
           set -eux
           cd "$GITHUB_WORKSPACE"
@@ -120,30 +120,9 @@ jobs:
           mkdir -p proj/game
           cp "$APK" proj/game/game.apk
           ls -la proj/game
-
-      - name: Usar tu libminecraftpe.so (si subiste el zip)
-        run: |
-          set -eux
-          cd "$GITHUB_WORKSPACE"
-          LIBZIP=$(ls | grep -i 'libminecraftpe.*\.zip$' | head -1 || true)
-          if [ -z "$LIBZIP" ]; then
-            echo "AVISO: no hay un zip de libminecraftpe en el repositorio; uso la libreria original del APK"
-            exit 0
-          fi
-          echo "Usando: $LIBZIP"
-          mkdir -p mylib
-          unzip -o -q "$LIBZIP" -d mylib
-          SO=$(find mylib -name 'libminecraftpe.so' | head -1)
-          if [ -z "$SO" ]; then
-            echo "ERROR: el zip no trae libminecraftpe.so"
-            exit 1
-          fi
-          file "$SO"
-          mkdir -p libtmp/lib/armeabi-v7a
-          cp "$SO" libtmp/lib/armeabi-v7a/libminecraftpe.so
-          (cd libtmp && zip -q "$GITHUB_WORKSPACE/proj/game/game.apk" lib/armeabi-v7a/libminecraftpe.so)
+          echo "libminecraftpe.so que trae tu APK:"
           unzip -l proj/game/game.apk | grep libminecraftpe
-          sha256sum "$SO"
+          unzip -p proj/game/game.apk lib/armeabi-v7a/libminecraftpe.so | sha256sum
 
       - name: Herramientas de Android (SDK y NDK r29)
         run: |
@@ -254,3 +233,4 @@ jobs:
           name: MinecraftPE-0.15-arm64
           path: result/MinecraftPE-0.15-arm64.apk
           if-no-files-found: error
+          
